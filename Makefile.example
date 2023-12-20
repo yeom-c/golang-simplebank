@@ -13,4 +13,7 @@ migrate.down:
 	@read -p "롤백 단계 입력(미입력시 전체 롤백): " step ;\
 		migrate -source file:./db/migration -database "${DB_URL}" down $$step ;\
 
-.PHONY: migrate.up migrate.down
+sqlc.gen:
+	sqlc gen
+
+.PHONY: migrate.create migrate.up migrate.down sqlc.gen
