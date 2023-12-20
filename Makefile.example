@@ -16,4 +16,7 @@ migrate.down:
 sqlc.gen:
 	sqlc gen
 
-.PHONY: migrate.create migrate.up migrate.down sqlc.gen
+test:
+	go test -v -cover ./...
+
+.PHONY: migrate.create migrate.up migrate.down sqlc.gen test
