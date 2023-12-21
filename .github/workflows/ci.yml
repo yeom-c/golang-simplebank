@@ -39,8 +39,9 @@ jobs:
     - name: Makefile 생성
       run: |
           touch Makefile
-          echo "${{ secrets.MAKEFILE }}" >> Makefile
-          cat Makefile
+          cat << 'EOF' > Makefile
+          ${{ secrets.MAKEFILE }}
+          EOF
 
     - name: golang-migrate 설치
       run: |
