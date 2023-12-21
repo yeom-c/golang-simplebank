@@ -1,5 +1,8 @@
 # https://github.com/golang-migrate/migrate
-DB_URL=db종류://유저:비밀번호@연결호스트:포트번호/데이터베이스명?옵션=값
+DB_USER=
+DB_PASSWORD=
+DB_NAME=simplebank
+DB_URL=postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}?sslmode=disable
 
 migrate.create:
 	@read -p "마이그레이션 이름(ex: create_table, add_cloumn): " name ;\
@@ -14,7 +17,7 @@ migrate.down:
 		migrate -source file:./db/migration -database "${DB_URL}" down $$step ;\
 
 sqlc.gen:
-	sqlc gen
+	sqlc generate
 
 test:
 	go test -v -cover ./...
