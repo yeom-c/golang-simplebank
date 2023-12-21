@@ -21,5 +21,8 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
 
+    - name: Rename Makefile file
+      run: mv Makefile.example Makefile
+
     - name: Test
       run: make test
