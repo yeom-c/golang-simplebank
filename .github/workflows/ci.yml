@@ -46,7 +46,7 @@ jobs:
     - name: golang-migrate 설치
       run: |
           curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
-          sudo mv migrate.linux-amd64 /usr/bin/migrate
+          sudo mv migrate /usr/bin/migrate
           migrate -version
 
     - name: DB 마이그레이션
