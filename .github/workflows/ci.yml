@@ -42,6 +42,13 @@ jobs:
           cat << 'EOF' > Makefile
           ${{ secrets.MAKEFILE }}
           EOF
+          
+    - name: .env 생성
+      run: |
+          touch .env
+          cat << 'EOF' > .env
+          ${{ secrets.ENV }}
+          EOF
 
     - name: golang-migrate 설치
       run: |
