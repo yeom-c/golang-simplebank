@@ -19,7 +19,10 @@ migrate.down:
 sqlc.gen:
 	sqlc generate
 
+mock.gen:
+	mockgen -package mockdb -destination db/mock/store.go github.com/yeom-c/golang-simplebank/db/sqlc Store
+
 test:
 	go test -v -cover ./...
 
-.PHONY: migrate.create migrate.up migrate.down sqlc.gen test
+.PHONY: migrate.create migrate.up migrate.down sqlc.gen mock.gen test

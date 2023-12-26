@@ -9,12 +9,12 @@ import (
 )
 
 type Server struct {
-	store     *db.Store
+	store     db.Store
 	app       *fiber.App
 	validator *validator.Validate
 }
 
-func NewServer(store *db.Store) *Server {
+func NewServer(store db.Store) *Server {
 	server := &Server{
 		store:     store,
 		validator: validator.New(validator.WithRequiredStructEnabled()),
