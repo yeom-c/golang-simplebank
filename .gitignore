@@ -2,3 +2,5 @@
 .idea
 
 Makefile
+.env
+tmp
