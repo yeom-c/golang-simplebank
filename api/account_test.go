@@ -80,7 +80,7 @@ func TestGetAccount(t *testing.T) {
 		},
 		{
 			name:      "InvalidReq",
-			accountID: "invalid",
+			accountID: "INVALID",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Any()).

@@ -22,8 +22,9 @@ func NewServer(store db.Store) *Server {
 		validator: validator,
 	}
 	app := fiber.New(fiber.Config{
-		JSONEncoder: json.Marshal,
-		JSONDecoder: json.Unmarshal,
+		JSONEncoder:       json.Marshal,
+		JSONDecoder:       json.Unmarshal,
+		StreamRequestBody: true,
 	})
 
 	app.Use(logger.New())
