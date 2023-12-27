@@ -9,7 +9,7 @@ import (
 
 type createAccountRequest struct {
 	Owner    string `json:"owner" validate:"required"`
-	Currency string `json:"currency" validate:"required,oneof=USD EUR KRW"`
+	Currency string `json:"currency" validate:"required,currency"`
 }
 
 func (server *Server) createAccount(ctx *fiber.Ctx) error {

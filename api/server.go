@@ -15,9 +15,11 @@ type Server struct {
 }
 
 func NewServer(store db.Store) *Server {
+	validator := validator.New(validator.WithRequiredStructEnabled())
+	validator.RegisterValidation("currency", validCurrency)
 	server := &Server{
 		store:     store,
-		validator: validator.New(validator.WithRequiredStructEnabled()),
+		validator: validator,
 	}
 	app := fiber.New(fiber.Config{
 		JSONEncoder: json.Marshal,
@@ -30,6 +32,8 @@ func NewServer(store db.Store) *Server {
 	app.Get("/accounts", server.listAccount)
 	app.Get("/accounts/:id", server.getAccount)
 	app.Delete("/accounts/:id", server.deleteAccount)
+
+	app.Post("/transfers", server.createTransfer)
 
 	server.app = app
 	return server
