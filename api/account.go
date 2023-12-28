@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lib/pq"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
 )
 
@@ -29,6 +30,12 @@ func (server *Server) createAccount(ctx *fiber.Ctx) error {
 	}
 	account, err := server.store.CreateAccount(ctx.Context(), arg)
 	if err != nil {
+		if pqErr, ok := err.(*pq.Error); ok {
+			switch pqErr.Code.Name() {
+			case "foreign_key_violation", "unique_violation":
+				return ctx.Status(fiber.StatusForbidden).JSON(errorResponse(err))
+			}
+		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
 	}
 
