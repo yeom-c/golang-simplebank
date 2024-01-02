@@ -29,6 +29,8 @@ func NewServer(store db.Store) *Server {
 
 	app.Use(logger.New())
 
+	app.Post("/users", server.createUser)
+
 	app.Post("/accounts", server.createAccount)
 	app.Get("/accounts", server.listAccount)
 	app.Get("/accounts/:id", server.getAccount)
