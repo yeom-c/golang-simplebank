@@ -34,7 +34,7 @@ func (server *Server) createUser(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
 	}
 
-	hashedPassword, err := util.HashedPassword(req.Password)
+	hashedPassword, err := util.HashPassword(req.Password)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
 	}
