@@ -103,7 +103,7 @@ func TestGetAccount(t *testing.T) {
 			tc.buildStubs(store)
 
 			// start test server and send request
-			server := NewServer(store)
+			server := newTestServer(t, store)
 
 			url := fmt.Sprintf("/accounts/%v", tc.accountID)
 			req := httptest.NewRequest(fiber.MethodGet, url, nil)

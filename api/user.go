@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,12 +17,22 @@ type createUserRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 }
 
-type createUserResponse struct {
+type userResponse struct {
 	Username          string    `json:"username"`
 	FullName          string    `json:"full_name"`
 	Email             string    `json:"email"`
 	PasswordChangedAt time.Time `json:"password_change_at"`
 	CreatedAt         time.Time `json:"created_at"`
+}
+
+func newUserResponse(user db.User) userResponse {
+	return userResponse{
+		Username:          user.Username,
+		FullName:          user.FullName,
+		Email:             user.Email,
+		PasswordChangedAt: user.PasswordChangedAt,
+		CreatedAt:         user.CreatedAt,
+	}
 }
 
 func (server *Server) createUser(ctx *fiber.Ctx) error {
@@ -56,12 +67,54 @@ func (server *Server) createUser(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
 	}
 
-	res := createUserResponse{
-		Username:          user.Username,
-		FullName:          user.FullName,
-		Email:             user.Email,
-		PasswordChangedAt: user.PasswordChangedAt,
-		CreatedAt:         user.CreatedAt,
+	res := newUserResponse(user)
+	return ctx.JSON(res)
+}
+
+type loginUserRequest struct {
+	Username string `json:"username" validate:"required,alphanum"`
+	Password string `json:"password" validate:"required,min=6"`
+}
+
+type loginUserResponse struct {
+	AccessToken string       `json:"access_token"`
+	User        userResponse `json:"user"`
+}
+
+func (server *Server) loginUser(ctx *fiber.Ctx) error {
+	var req loginUserRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
+	}
+
+	if err := server.validator.Struct(req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
+	}
+
+	user, err := server.store.GetUser(ctx.Context(), req.Username)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return ctx.Status(fiber.StatusNotFound).JSON(errorResponse(err))
+		}
+		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
+	}
+
+	err = util.CheckPasswordHash(req.Password, user.HashedPassword)
+	if err != nil {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(errorResponse(err))
+	}
+
+	accessToken, err := server.tokenMaker.CreateToken(
+		user.Username,
+		server.config.AccessTokenDuration,
+	)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
+	}
+
+	res := loginUserResponse{
+		AccessToken: accessToken,
+		User:        newUserResponse(user),
 	}
 	return ctx.JSON(res)
 }

@@ -6,30 +6,50 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
+	"github.com/yeom-c/golang-simplebank/token"
+	"github.com/yeom-c/golang-simplebank/util"
 )
 
 type Server struct {
-	store     db.Store
-	app       *fiber.App
-	validator *validator.Validate
+	config     util.Config
+	store      db.Store
+	app        *fiber.App
+	validator  *validator.Validate
+	tokenMaker token.Maker
 }
 
-func NewServer(store db.Store) *Server {
+func NewServer(config util.Config, store db.Store) (*Server, error) {
 	validator := validator.New(validator.WithRequiredStructEnabled())
 	validator.RegisterValidation("currency", validCurrency)
-	server := &Server{
-		store:     store,
-		validator: validator,
+	tokenMaker, err := token.NewPasetoMaker()
+	if err != nil {
+		return nil, err
 	}
-	app := fiber.New(fiber.Config{
+
+	server := &Server{
+		config:     config,
+		store:      store,
+		validator:  validator,
+		tokenMaker: tokenMaker,
+	}
+	server.app = fiber.New(fiber.Config{
 		JSONEncoder:       json.Marshal,
 		JSONDecoder:       json.Unmarshal,
 		StreamRequestBody: true,
 	})
 
+	server.setupRouter()
+
+	return server, nil
+}
+
+func (server *Server) setupRouter() {
+	app := server.app
+
 	app.Use(logger.New())
 
 	app.Post("/users", server.createUser)
+	app.Post("/users/login", server.loginUser)
 
 	app.Post("/accounts", server.createAccount)
 	app.Get("/accounts", server.listAccount)
@@ -37,9 +57,6 @@ func NewServer(store db.Store) *Server {
 	app.Delete("/accounts/:id", server.deleteAccount)
 
 	app.Post("/transfers", server.createTransfer)
-
-	server.app = app
-	return server
 }
 
 func (server *Server) Start(address string) error {

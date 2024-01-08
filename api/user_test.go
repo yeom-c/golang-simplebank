@@ -194,7 +194,7 @@ func TestCreateUser(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := newTestServer(t, store)
 
 			url := "/users"
 			reqBody, err := json.Marshal(tc.body)
