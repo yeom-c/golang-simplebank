@@ -1,6 +1,6 @@
 module github.com/yeom-c/golang-simplebank
 
-go 1.21.4
+go 1.21.6
 
 require (
 	aidanwoods.dev/go-paseto v1.5.1
