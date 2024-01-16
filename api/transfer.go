@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
+	"github.com/yeom-c/golang-simplebank/token"
 )
 
 type transferRequest struct {
@@ -25,12 +26,17 @@ func (server *Server) createTransfer(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
 	}
 
-	code, err := server.validAccount(ctx, req.FromAccountID, req.Currency)
+	fromAccount, code, err := server.validAccount(ctx, req.FromAccountID, req.Currency)
 	if err != nil {
 		return ctx.Status(code).JSON(errorResponse(err))
 	}
 
-	code, err = server.validAccount(ctx, req.ToAccountID, req.Currency)
+	authPayload := ctx.UserContext().Value(authorizationPayloadKey).(*token.Payload)
+	if fromAccount.Owner != authPayload.Username {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(errorResponse(fmt.Errorf("from account doesn't belong to the authenticated user")))
+	}
+
+	_, code, err = server.validAccount(ctx, req.ToAccountID, req.Currency)
 	if err != nil {
 		return ctx.Status(code).JSON(errorResponse(err))
 	}
@@ -49,18 +55,18 @@ func (server *Server) createTransfer(ctx *fiber.Ctx) error {
 	return ctx.JSON(result)
 }
 
-func (server *Server) validAccount(ctx *fiber.Ctx, accountID int64, currency string) (int, error) {
+func (server *Server) validAccount(ctx *fiber.Ctx, accountID int64, currency string) (db.Account, int, error) {
 	account, err := server.store.GetAccount(ctx.Context(), accountID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fiber.StatusNotFound, err
+			return account, fiber.StatusNotFound, err
 		}
-		return fiber.StatusInternalServerError, err
+		return account, fiber.StatusInternalServerError, err
 	}
 
 	if account.Currency != currency {
-		return fiber.StatusBadRequest, fmt.Errorf("account [%d] currency mismatch: %s vs %s", accountID, account.Currency, currency)
+		return account, fiber.StatusBadRequest, fmt.Errorf("account [%d] currency mismatch: %s vs %s", accountID, account.Currency, currency)
 	}
 
-	return fiber.StatusOK, nil
+	return account, fiber.StatusOK, nil
 }

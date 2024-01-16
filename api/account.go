@@ -2,14 +2,15 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
+	"github.com/yeom-c/golang-simplebank/token"
 )
 
 type createAccountRequest struct {
-	Owner    string `json:"owner" validate:"required"`
 	Currency string `json:"currency" validate:"required,currency"`
 }
 
@@ -23,8 +24,9 @@ func (server *Server) createAccount(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
 	}
 
+	authPayload := ctx.UserContext().Value(authorizationPayloadKey).(*token.Payload)
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    authPayload.Username,
 		Currency: req.Currency,
 		Balance:  0,
 	}
@@ -57,7 +59,9 @@ func (server *Server) listAccount(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(errorResponse(err))
 	}
 
+	authPayload := ctx.UserContext().Value(authorizationPayloadKey).(*token.Payload)
 	arg := db.ListAccountsParams{
+		Owner:  authPayload.Username,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}
@@ -89,6 +93,12 @@ func (server *Server) getAccount(ctx *fiber.Ctx) error {
 			return ctx.Status(fiber.StatusNotFound).JSON(errorResponse(err))
 		}
 		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
+	}
+
+	authPayload := ctx.UserContext().Value(authorizationPayloadKey).(*token.Payload)
+	if account.Owner != authPayload.Username {
+		err := errors.New("account doesn't belong to the authenticated user")
+		return ctx.Status(fiber.StatusUnauthorized).JSON(errorResponse(err))
 	}
 
 	return ctx.JSON(account)

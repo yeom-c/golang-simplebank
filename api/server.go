@@ -51,6 +51,8 @@ func (server *Server) setupRouter() {
 	app.Post("/users", server.createUser)
 	app.Post("/users/login", server.loginUser)
 
+	app.Use(authMiddleware(server.tokenMaker))
+
 	app.Post("/accounts", server.createAccount)
 	app.Get("/accounts", server.listAccount)
 	app.Get("/accounts/:id", server.getAccount)
