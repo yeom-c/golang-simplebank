@@ -6,25 +6,43 @@ on:
 
 jobs:
 
-  build:
-    name: Build image
+  deploy:
+    name: Build image and push to Amazon ECR
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
-    - name: Checkout repo
+    - name: 코드 체크아웃
       uses: actions/checkout@v3
 
-    - name: Configure AWS credentials
+    - name: Makefile 생성
+      run: |
+          touch Makefile
+          cat << 'EOF' > Makefile
+          ${{ secrets.MAKEFILE }}
+          EOF
+
+    - name: .env 생성
+      run: |
+          touch .env
+          cat << 'EOF' > .env
+          ${{ secrets.ENV }}
+          EOF
+
+    - name: AWS 자격 증명 구성
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: arn:aws:iam::731910406212:role/github-actions
-        aws-region: ap-northeast-2
+        role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-    - name: Login to Amazon ECR
+    - name: Amazon ECR 로그인
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Build, tag, and push docker image to Amazon ECR
+    - name: Amazon ECR 푸시 
       env:
         REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         REPOSITORY: golang-simplebank
