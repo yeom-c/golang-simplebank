@@ -211,6 +211,140 @@ func TestCreateUser(t *testing.T) {
 	}
 }
 
+func TestLoginUser(t *testing.T) {
+	user, password := randomUser(t)
+
+	testCases := []struct {
+		name       string
+		body       fiber.Map
+		buildStubs func(store *mockdb.MockStore)
+		checkRes   func(t *testing.T, res *http.Response)
+	}{
+		{
+			name: "OK",
+			body: fiber.Map{
+				"username": user.Username,
+				"password": password,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Eq(user.Username)).
+					Times(1).
+					Return(user, nil)
+				store.EXPECT().
+					CreateSession(gomock.Any(), gomock.Any()).
+					Times(1)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusOK, res.StatusCode)
+			},
+		},
+		{
+			name: "UserNotFound",
+			body: fiber.Map{
+				"username": "unknown",
+				"password": password,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(db.User{}, sql.ErrNoRows)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusNotFound, res.StatusCode)
+			},
+		},
+		{
+			name: "IncorrectPassword",
+			body: fiber.Map{
+				"username": user.Username,
+				"password": "incorrect",
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(user, nil)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusUnauthorized, res.StatusCode)
+			},
+		},
+		{
+			name: "InternalError",
+			body: fiber.Map{
+				"username": user.Username,
+				"password": password,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return(db.User{}, sql.ErrConnDone)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusInternalServerError, res.StatusCode)
+			},
+		},
+		{
+			name: "InvalidUsername",
+			body: fiber.Map{
+				"username": "INVALID#",
+				"password": password,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusBadRequest, res.StatusCode)
+			},
+		},
+		{
+			name: "InvalidReq",
+			body: fiber.Map{
+				"username": 12345,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkRes: func(t *testing.T, res *http.Response) {
+				require.Equal(t, fiber.StatusBadRequest, res.StatusCode)
+			},
+		},
+	}
+
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			tc.buildStubs(store)
+
+			server := newTestServer(t, store)
+
+			url := "/users/login"
+			reqBody, err := json.Marshal(tc.body)
+			require.NoError(t, err)
+
+			req := httptest.NewRequest(http.MethodPost, url, bytes.NewReader(reqBody))
+			req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+
+			res, err := server.app.Test(req)
+			require.NoError(t, err)
+
+			tc.checkRes(t, res)
+		})
+	}
+}
+
 func randomUser(t *testing.T) (user db.User, password string) {
 	password = util.RandomString(6)
 	hashedPassword, err := util.HashPassword(password)

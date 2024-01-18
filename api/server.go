@@ -50,6 +50,7 @@ func (server *Server) setupRouter() {
 
 	app.Post("/users", server.createUser)
 	app.Post("/users/login", server.loginUser)
+	app.Post("/tokens/renew", server.renewAccessToken)
 
 	app.Use(authMiddleware(server.tokenMaker))
 

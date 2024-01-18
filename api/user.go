@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
 	"github.com/yeom-c/golang-simplebank/util"
@@ -77,8 +78,12 @@ type loginUserRequest struct {
 }
 
 type loginUserResponse struct {
-	AccessToken string       `json:"access_token"`
-	User        userResponse `json:"user"`
+	SessionID             uuid.UUID    `json:"session_id"`
+	AccessToken           string       `json:"access_token"`
+	AccessTokenExpiresAt  time.Time    `json:"access_token_expires_at"`
+	RefreshToken          string       `json:"refresh_token"`
+	RefreshTokenExpiresAt time.Time    `json:"refresh_token_expires_at"`
+	User                  userResponse `json:"user"`
 }
 
 func (server *Server) loginUser(ctx *fiber.Ctx) error {
@@ -104,7 +109,7 @@ func (server *Server) loginUser(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(errorResponse(err))
 	}
 
-	accessToken, err := server.tokenMaker.CreateToken(
+	accessToken, accessPayload, err := server.tokenMaker.CreateToken(
 		user.Username,
 		server.config.AccessTokenDuration,
 	)
@@ -112,9 +117,34 @@ func (server *Server) loginUser(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
 	}
 
+	refreshToken, refreshPayload, err := server.tokenMaker.CreateToken(
+		user.Username,
+		server.config.RefreshTokenDuration,
+	)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
+	}
+
+	session, err := server.store.CreateSession(ctx.Context(), db.CreateSessionParams{
+		ID:           refreshPayload.ID,
+		Username:     user.Username,
+		RefreshToken: refreshToken,
+		UserAgent:    ctx.Get("User-Agent"),
+		ClientIp:     ctx.IP(),
+		IsBlocked:    false,
+		ExpiresAt:    refreshPayload.ExpiresAt,
+	})
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(errorResponse(err))
+	}
+
 	res := loginUserResponse{
-		AccessToken: accessToken,
-		User:        newUserResponse(user),
+		SessionID:             session.ID,
+		AccessToken:           accessToken,
+		AccessTokenExpiresAt:  accessPayload.ExpiresAt,
+		RefreshToken:          refreshToken,
+		RefreshTokenExpiresAt: refreshPayload.ExpiresAt,
+		User:                  newUserResponse(user),
 	}
 	return ctx.JSON(res)
 }
