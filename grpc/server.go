@@ -7,7 +7,9 @@ import (
 	"net/http"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/rakyll/statik/fs"
 	db "github.com/yeom-c/golang-simplebank/db/sqlc"
+	_ "github.com/yeom-c/golang-simplebank/doc/statik"
 	"github.com/yeom-c/golang-simplebank/pb"
 	"github.com/yeom-c/golang-simplebank/token"
 	"github.com/yeom-c/golang-simplebank/util"
@@ -79,8 +81,13 @@ func (s *Server) StartGateway(address string) error {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/", grpcMux)
 
-	fs := http.FileServer(http.Dir("./doc/swagger"))
-	httpMux.Handle("/swagger/", http.StripPrefix("/swagger", fs))
+	statikFS, err := fs.New()
+	if err != nil {
+		return err
+	}
+
+	swaggerHandler := http.StripPrefix("/swagger", http.FileServer(statikFS))
+	httpMux.Handle("/swagger/", swaggerHandler)
 
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
