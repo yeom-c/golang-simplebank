@@ -30,4 +30,7 @@ mock.gen:
 test:
 	go test -v -cover ./...
 
-.PHONY: migrate.create migrate.up migrate.down migrate.force sqlc.gen mock.gen test
+evans:
+	evans --host localhost --port 9090 -r repl
+
+.PHONY: migrate.create migrate.up migrate.down migrate.force sqlc.gen mock.gen test evans

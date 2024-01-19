@@ -1,6 +1,8 @@
 package api
 
 import (
+	"log"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
@@ -63,7 +65,13 @@ func (server *Server) setupRouter() {
 }
 
 func (server *Server) Start(address string) error {
-	return server.app.Listen(address)
+	log.Printf("starting http server on %s", address)
+	err := server.app.Listen(address)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func errorResponse(err error) fiber.Map {
