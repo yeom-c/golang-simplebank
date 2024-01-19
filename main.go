@@ -23,6 +23,7 @@ func main() {
 	}
 
 	store := db.NewStore(conn)
+	go startGatewayServer(config, store)
 	startGRPCServer(config, store)
 }
 
@@ -45,6 +46,18 @@ func startGRPCServer(config util.Config, store db.Store) {
 	}
 
 	err = server.Start(config.GRPCServerAddress)
+	if err != nil {
+		log.Fatal("cannot start grpc server:", err)
+	}
+}
+
+func startGatewayServer(config util.Config, store db.Store) {
+	server, err := grpcApi.NewServer(config, store)
+	if err != nil {
+		log.Fatal("cannot create grpc server:", err)
+	}
+
+	err = server.StartGateway(config.HTTPServerAddress)
 	if err != nil {
 		log.Fatal("cannot start grpc server:", err)
 	}
