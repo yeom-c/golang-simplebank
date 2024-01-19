@@ -79,6 +79,9 @@ func (s *Server) StartGateway(address string) error {
 	httpMux := http.NewServeMux()
 	httpMux.Handle("/", grpcMux)
 
+	fs := http.FileServer(http.Dir("./doc/swagger"))
+	httpMux.Handle("/swagger/", http.StripPrefix("/swagger", fs))
+
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
